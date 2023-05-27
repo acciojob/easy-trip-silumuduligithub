@@ -5,146 +5,139 @@ import com.driver.model.City;
 import com.driver.model.Flight;
 import com.driver.model.Passenger;
 
-
 import java.util.*;
 
 public class AirportRepository {
-    static class Pair implements Comparable<Pair>{
-        int terminal;
-        String str;
-        Pair(int terminal, String str){
-            this.terminal = terminal;
-            this.str = str;
-        }
-        public int compareTo(Pair o){
-            if(this.terminal == o.terminal)return this.str.compareTo(o.str);
-            return o.terminal - this.terminal;
-        }
-    }
-    class Helper{
-        String airportName;
-        int people;
-        Helper(String airportName, int people){
-            this.airportName = airportName;
-            this.people = people;
-        }
-    }
-    HashMap<String, Airport> airportData = new HashMap<>();
-    HashMap<Integer, Flight> flightData = new HashMap<>();
-    HashMap<Integer, Passenger> passengerData = new HashMap<>();
-    HashMap<Integer, Set<Integer>> ticketCounter = new HashMap<>();
-    HashMap<Integer, Integer> travelByPassenger = new HashMap<>();
-    HashMap<Integer, Integer> revenuOfFlight = new HashMap<>();
-    HashMap<Date, List<Helper>> PassengersOFTheDay = new HashMap<>();
-    HashMap<Integer, List<Integer>> ticketPrice = new HashMap<>();
+    private TreeMap<String,Airport> airportMap= new TreeMap<>();
+    private HashMap<Integer,Flight> flightMap= new HashMap<>();
+    private HashMap<Integer,Passenger> passengerMap= new HashMap<>();
+    private HashMap<Integer,Set<Integer>> flightPassMap= new HashMap<>();
+    private HashMap<Integer,Integer> revenueMap= new HashMap<>();
+    private HashMap<Integer,Integer> paymentMap= new HashMap<>();
+
     public void addAirport(Airport airport) {
-        airportData.put(airport.getAirportName(), airport);
+
+        airportMap.put(airport.getAirportName(),airport);
+    }
+
+    public String getLargestAirportName() {
+        String answer="";
+        int ans=0;
+        for(String name:airportMap.keySet()){
+            int co=airportMap.get(name).getNoOfTerminals();
+            if(co>ans){
+                ans=co;
+                answer=name;
+            }
+        }
+        return answer;
     }
 
     public void addFlight(Flight flight) {
-        flightData.put(flight.getFlightId(), flight);
+        flightMap.put(flight.getFlightId(),flight);
     }
 
-    public void addPassengers(Passenger passenger) {
-        passengerData.put(passenger.getPassengerId(), passenger);
+    public void addPassenger(Passenger passenger) {
+        passengerMap.put(passenger.getPassengerId(),passenger);
     }
 
-    private String lexographicallySmallest(){
-        PriorityQueue<Pair> pq = new PriorityQueue<>();
-      for(String key : airportData.keySet()){
-          pq.add(new Pair(airportData.get(key).getNoOfTerminals(), airportData.get(key).getAirportName()));
-      }
-      Pair cur = pq.peek();
-      return cur.str;
+    public String bookATicket(Integer flightId, Integer passengerId) {
+        Flight flight=flightMap.get(flightId);
+        int maxcapacity=flight.getMaxCapacity();
+        Set<Integer> list= new HashSet<>();
+        if(flightPassMap.containsKey(flightId)){
+            list=flightPassMap.get(flightId);
+        }
+        int capacity=list.size();
+        if(capacity==maxcapacity) return "FAILURE";
+        else if(list.contains(passengerId)) return "FAILURE";
+        int fare=calculateFare(flightId);
+        paymentMap.put(passengerId,fare);
+        fare+=revenueMap.getOrDefault(flightId,0);
+        revenueMap.put(flightId,fare);
+        list.add(passengerId);
+        flightPassMap.put(flightId,list);
+        return "SUCCESS";
     }
 
-    public String largestAirport() {
-        return lexographicallySmallest();
+    public String cancelATicket(Integer flightId, Integer passengerId) {
+        Set<Integer> list= flightPassMap.get(flightId);
+        if(list.contains(passengerId)){
+            list.remove(passengerId);
+            int fare=paymentMap.getOrDefault(passengerId,0);
+            paymentMap.remove(passengerId);
+            int revenue=revenueMap.getOrDefault(flightId,0);
+            revenueMap.put(flightId,revenue-fare);
+            return "SUCCESS";
+        }
+        return "FAILURE";
     }
-    public Optional<Double> getSortedDuration(City fromCity, City toCity) {
-        double duration = Double.MAX_VALUE;
-        for(Integer id : flightData.keySet()) {
-            if(flightData.get(id).getFromCity().equals(fromCity) && flightData.get(id).getToCity().equals(toCity)){
-                duration = Math.min(flightData.get(id).getDuration(), duration);
+
+    public int countOfBookingsDoneByPassengerAllCombined(Integer passengerId) {
+        int count=0;
+        for(Integer flightId:flightPassMap.keySet()){
+            Set<Integer> list=flightPassMap.get(flightId);
+            if(list.contains(passengerId)){
+                count++;
             }
         }
-        if(duration == Double.MAX_VALUE)return Optional.of(-1.0);
-        return Optional.of(duration);
+        return count;
     }
 
-    public Optional<String> bookTicket(Integer flightId, Integer passengerId) {
-        if(ticketCounter.get(flightId).size() >= flightData.get(flightId).getMaxCapacity()){
-            return Optional.empty();
+    public int calculateFare(Integer flightId) {
+        int fare=3000;
+        int alreadyBooked=0;
+        if(flightPassMap.containsKey(flightId))
+            alreadyBooked=flightPassMap.get(flightId).size();
+        return (fare+(alreadyBooked*50));
+    }
+
+    public double getShortestTime(City fromCity, City toCity) {
+        double duration=Integer.MAX_VALUE;
+        for (Flight flight :flightMap.values()){
+            if(fromCity.equals(flight.getFromCity()) && toCity.equals(flight.getToCity())){
+                if(duration>flight.getDuration()){
+                    duration=flight.getDuration();
+                }
+            }
         }
-        if(ticketCounter.containsKey(passengerId) && ticketCounter.get(passengerId).contains(passengerId)){
-            return Optional.empty();
+        return duration==Integer.MAX_VALUE?-1:duration;
+    }
+
+    public int calculateRevenueOfAFlight(Integer flightId) {
+        Integer revenue= revenueMap.getOrDefault(flightId,0);
+        return revenue;
+    }
+
+    public String getAirportNmae(Integer flightId) {
+        if(!flightMap.containsKey(flightId)) return null;
+        Flight flight= flightMap.get(flightId);
+        City city=flight.getFromCity();
+        for (String airportname:airportMap.keySet()){
+            Airport airport=airportMap.get(airportname);
+            if(city.equals(airport.getCity())){
+                return airportname;
+            }
         }
-        Set<Integer> passengers = ticketCounter.getOrDefault(flightId, new HashSet<>());
-        passengers.add(passengerId);
-        ticketCounter.put(flightId, passengers);
-        Date date = flightData.get(flightId).getFlightDate();
-        String fromCity = flightData.get(flightId).getFromCity().toString();
-        String toCity = flightData.get(flightId).getToCity().toString();
-        List<Helper> al = PassengersOFTheDay.getOrDefault(date, new ArrayList<>());
-        Helper cur = al.get(flightId);
-        if(cur == null){
-            al.add(new Helper(fromCity, 1));
-            al.add(new Helper(toCity, 1));
-        }else{
-            al.add(new Helper(fromCity, cur.people + 1));
-            al.add(new Helper(toCity, cur.people + 1));
-        }
-        PassengersOFTheDay.put(date, al);
-        travelByPassenger.put(passengerId, travelByPassenger.getOrDefault(passengerId, 0) + 1);
-        return Optional.of("SUCCESS");
+        return null;
     }
-    public Optional<String> cancelTicket(Integer flightId, Integer passengerId) {
-        if(ticketCounter.containsKey(flightId) == false){
-            return Optional.empty();
-        }
-        if(ticketCounter.get(flightId).contains(passengerId) == false){
-            return Optional.empty();
-        }
-        Set<Integer> tickets = ticketCounter.get(flightId);
-        tickets.remove(passengerId);
-        ticketCounter.put(flightId, tickets);
-        List<Integer> al = ticketPrice.get(flightId);
-        int price = al.get(1);
-        revenuOfFlight.put(flightId, revenuOfFlight.get(flightId) - price);
-        travelByPassenger.put(passengerId, travelByPassenger.getOrDefault(passengerId, 0) - 1);
-        return Optional.of("SUCCESS");
-    }
-    public int countBookingsOfAPassenger(Integer passengerId) {
-        return travelByPassenger.get(passengerId);
-    }
-    public Optional<String> getAirportnameFromFlightId(Integer flightId) {
-        if(flightData.containsKey(flightId) == false)return Optional.empty();
-        return Optional.of(flightData.get(flightId).getFromCity().toString());
-    }
-    public int calculateFlightFare(Integer flightId) {
-        int Price = 3000;
-       Set<Integer>passengers = ticketCounter.getOrDefault(flightId, new HashSet<>());
-       if(passengers.size() == 0)return Price;
-       int flightFare = (passengers.size() * 50) + Price;
-       List<Integer> al = new ArrayList<>();
-       al.add(passengers.size() + 1);
-       al.add(flightFare);
-        ticketPrice.put(flightId, al);
-       revenuOfFlight.put(flightId, revenuOfFlight.getOrDefault(flightId, 0) + flightFare);
-       return flightFare;
-    }
-    public int revenuOfFlight(Integer flightId) {
-        return revenuOfFlight.get(flightId);
-    }
-    public int getNumberOfPeopleOnDate(Date requireddate, String airportName) {
-       for(Date date: PassengersOFTheDay.keySet()){
-           if(date.equals(requireddate)){
-               List<Helper> list =  PassengersOFTheDay.get(date);
-               for(Helper helper : list){
-                   if(helper.airportName.equals(airportName))return helper.people;
-               }
-           }
-       }
-       return 0;
+
+    public int getNumberOfPeople(Date date, String airportName) {
+        Airport airport=airportMap.get(airportName);
+        int count=0;
+        if(airport!=null){
+            City city=airport.getCity();
+            for(Flight flight : flightMap.values()){
+                if(date.equals(flight.getFlightDate())){
+                    if(city.equals(flight.getToCity()) || city.equals(flight.getFromCity())){
+                        Integer flightId=flight.getFlightId();
+                        Set<Integer> list=flightPassMap.get(flightId);
+                        if(list!=null){
+                            count+= list.size();
+                        }
+                    }
+                }
+            }}
+        return count;
     }
 }

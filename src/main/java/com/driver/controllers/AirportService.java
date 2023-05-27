@@ -5,71 +5,56 @@ import com.driver.model.City;
 import com.driver.model.Flight;
 import com.driver.model.Passenger;
 
-import javax.crypto.spec.OAEPParameterSpec;
 import java.util.Date;
-import java.util.Optional;
 
 public class AirportService {
-    AirportRepository airportRepository = new AirportRepository();
+    AirportRepository airportRepository= new AirportRepository();
 
     public void addAirport(Airport airport) {
         airportRepository.addAirport(airport);
     }
 
-    public void addFlight(Flight flight) {
+    public String getLargestAirportName() {
+        return airportRepository.getLargestAirportName();
+    }
+
+    public void aaddFlight(Flight flight) {
         airportRepository.addFlight(flight);
     }
 
-    public void addPassengers(Passenger passenger) {
-        airportRepository.addPassengers(passenger);
+    public void addPassenger(Passenger passenger) {
+        airportRepository.addPassenger(passenger);
     }
 
-    public String largestAirport() {
-        return airportRepository.largestAirport();
+    public String bookATicket(Integer flightId, Integer passengerId) {
+        return  airportRepository.bookATicket(flightId,passengerId);
     }
 
-    public double getSortedDuration(City fromCity, City toCity) {
-        Optional<Double> durationopt = airportRepository.getSortedDuration(fromCity, toCity);
-        return durationopt.get();
-    }
-
-    public String boolTicket(Integer flightId, Integer passengerId) throws RuntimeException{
-       Optional<String> stringOpt =  airportRepository.bookTicket(flightId, passengerId);
-       if(stringOpt.isEmpty()){
-           throw new RuntimeException("flight may be full or passenger is already booked a ticket");
-       }
-       return "SUCCESS";
-    }
-
-    public String cancelTicket(Integer flightId, Integer passengerId) throws RuntimeException{
-        Optional<String> stringOpt = airportRepository.cancelTicket(flightId, passengerId);
-        if(stringOpt.isEmpty()){
-            throw  new RuntimeException();
-        }
-        return "success";
+    public String cancelATicket(Integer flightId, Integer passengerId) {
+        return airportRepository.cancelATicket(flightId,passengerId);
     }
 
     public int countOfBookingsDoneByPassengerAllCombined(Integer passengerId) {
-        return airportRepository.countBookingsOfAPassenger(passengerId);
+        return airportRepository.countOfBookingsDoneByPassengerAllCombined(passengerId);
     }
 
-    public String getAirportNameFromFlightId(Integer flightId) {
-        Optional<String> stringOpt = airportRepository.getAirportnameFromFlightId(flightId);
-        if(stringOpt.isEmpty()){
-            throw  new RuntimeException();
-        }
-        return stringOpt.get();
+    public int calculateFare(Integer flightId) {
+        return airportRepository.calculateFare(flightId);
     }
 
-    public int calculateFlightFare(Integer flightId) {
-        return airportRepository.calculateFlightFare(flightId);
+    public double getShortestTime(City fromCity, City toCity) {
+        return airportRepository.getShortestTime(fromCity,toCity);
     }
 
-    public int getNumberOfPeopleOnDate(Date date, String airportName) {
-        return airportRepository.getNumberOfPeopleOnDate(date, airportName);
+    public int calculateRevenueOfAFlight(Integer flightId) {
+        return airportRepository.calculateRevenueOfAFlight(flightId);
     }
 
-    public int revenueOfAFlight(Integer flightId) {
-        return airportRepository.revenuOfFlight(flightId);
+    public String getAirportName(Integer flightId) {
+        return airportRepository.getAirportNmae(flightId);
+    }
+
+    public int getNumberOfPeople(Date date, String airportName) {
+        return airportRepository.getNumberOfPeople(date, airportName);
     }
 }
